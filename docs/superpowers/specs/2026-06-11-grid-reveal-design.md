@@ -70,6 +70,7 @@ The Hard mode challenge comes from smaller tiles making the poster harder to rea
 - All tiles dissolve revealing full poster.
 - Correct option highlighted green.
 - Trophy icon + "Brilliant!" heading.
+- Score displayed prominently (e.g. "847 pts"); "New best!" badge if a new high score was set.
 - Body: "You nailed it with {timeLeft}s to spare!"
 - Play Again + Menu buttons.
 
@@ -86,12 +87,45 @@ The Hard mode challenge comes from smaller tiles making the poster harder to rea
 
 ---
 
+## Scoring
+
+### Formula
+
+```
+score = Math.round((timeLeft / TIMER_DURATION) * 1000 * multiplier)
+```
+
+| Difficulty | Multiplier | Max score |
+|---|---|---|
+| Normal | ×1 | 1 000 |
+| Hard | ×2 | 2 000 |
+
+A wrong answer or timeout scores 0.
+
+### Persistence
+
+- Two `localStorage` keys: `gridReveal_highScore_normal` and `gridReveal_highScore_hard`.
+- A new score replaces the stored value only if it is strictly higher.
+- High scores are read and displayed in two places:
+  1. **Difficulty sub-screen** — shown beneath each difficulty card as "Best: {n} pts" (or hidden if no score yet).
+  2. **Win screen** — "New best!" badge shown when the current score beats the stored high score.
+
+### Utility
+
+A small `scoring.ts` module (alongside the component) exports:
+- `calcScore(timeLeft, timerDuration, difficulty)` — pure function, easy to test
+- `getHighScore(difficulty)` — reads localStorage
+- `saveHighScore(difficulty, score)` — writes if new score is higher, returns `true` when a new record is set
+
+---
+
 ## Files Changing
 
 | File | Change |
 |---|---|
 | `src/app/components/movie-game.tsx` | Remove `"unblur"`, add `"grid"` / `"grid-normal"` / `"grid-hard"`; add difficulty sub-screen UI; update menu card copy and description |
 | `src/app/components/unblur-poster-mode.tsx` | Full rewrite as grid reveal game component; accepts `difficulty: "normal" \| "hard"` prop |
+| `src/app/components/scoring.ts` | New — `calcScore`, `getHighScore`, `saveHighScore` utilities |
 | `src/app/data/movies.ts` | No changes |
 
 ---
