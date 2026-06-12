@@ -1,280 +1,307 @@
-import { useState, useEffect, useRef } from "react";
+// src/app/components/unblur-poster-mode.tsx
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { Progress } from "./ui/progress";
-import { ArrowLeft, RotateCcw, Trophy, X } from "lucide-react";
-import { getRandomMovie, type Movie } from "../data/movies";
+import { ArrowLeft, RotateCcw, Trophy, X, Star } from "lucide-react";
+import { MOVIES, getRandomMovie, type Movie } from "../data/movies";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { calcScore, getHighScore, saveHighScore, type Difficulty } from "./scoring";
 
-interface UnblurPosterModeProps {
+interface GridRevealModeProps {
+  difficulty: Difficulty;
   onBackToMenu: () => void;
 }
 
-export function UnblurPosterMode({ onBackToMenu }: UnblurPosterModeProps) {
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [blurAmount, setBlurAmount] = useState(20);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [guess, setGuess] = useState("");
-  const [gameState, setGameState] = useState<"playing" | "won" | "lost">("playing");
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+const CONFIGS = {
+  normal: { cols: 4, rows: 6, total: 24, timer: 24 },
+  hard:   { cols: 6, rows: 9, total: 54, timer: 54 },
+} as const;
 
-  const normalizeString = (str: string) => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .trim();
-  };
+function buildOptions(correct: Movie): Movie[] {
+  const pool = MOVIES.filter(m => m.Title !== correct.Title);
+  const wrong = [...pool].sort(() => Math.random() - 0.5).slice(0, 3);
+  return [...wrong, correct].sort(() => Math.random() - 0.5);
+}
+
+export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps) {
+  const { cols, rows, total, timer } = CONFIGS[difficulty];
+
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [options, setOptions] = useState<Movie[]>([]);
+  const [revealed, setRevealed] = useState<number[]>([]);
+  const [timeLeft, setTimeLeft] = useState(timer);
+  const [gameState, setGameState] = useState<"playing" | "won" | "lost">("playing");
+  const [picked, setPicked] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [isNewBest, setIsNewBest] = useState(false);
 
   const startGame = () => {
-    const newMovie = getRandomMovie();
-    setMovie(newMovie);
-    setBlurAmount(20);
-    setTimeLeft(10);
-    setGuess("");
+    const m = getRandomMovie();
+    setMovie(m);
+    setOptions(buildOptions(m));
+    setRevealed([]);
+    setTimeLeft(timer);
     setGameState("playing");
-
-    // Clear any existing timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    // Start the timer
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 0) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-          }
-          setGameState("lost");
-          return 0;
-        }
-        return prev - 1;
-      });
-
-      setBlurAmount((prev) => {
-        const newBlur = prev - 2;
-        return newBlur < 0 ? 0 : newBlur;
-      });
-    }, 1000);
+    setPicked(null);
+    setScore(0);
+    setIsNewBest(false);
   };
 
-  const handleGuess = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!movie || gameState !== "playing") return;
-
-    const normalizedGuess = normalizeString(guess);
-    const normalizedTitle = normalizeString(movie.Title);
-
-    if (normalizedGuess === normalizedTitle) {
-      setGameState("won");
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    }
-  };
-
+  // Reveal one random tile + decrement timer every second
   useEffect(() => {
-    startGame();
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
+    if (gameState !== "playing" || !movie) return;
+    const id = setInterval(() => {
+      setRevealed(prev => {
+        if (prev.length >= total) return prev;
+        const s = new Set(prev);
+        let n: number;
+        do { n = Math.floor(Math.random() * total); } while (s.has(n));
+        return [...prev, n];
+      });
+      setTimeLeft(t => Math.max(0, t - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [gameState, movie, total]);
 
-  if (!movie) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  // End game when timer reaches zero
+  useEffect(() => {
+    if (timeLeft === 0 && gameState === "playing") setGameState("lost");
+  }, [timeLeft, gameState]);
 
-  const progress = ((10 - timeLeft) / 10) * 100;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { startGame(); }, []);
+
+  const handlePick = (choice: Movie) => {
+    if (!movie || gameState !== "playing") return;
+    setPicked(choice.Title);
+    if (choice.Title === movie.Title) {
+      const s = calcScore(timeLeft, timer, difficulty);
+      const newBest = saveHighScore(difficulty, s);
+      setScore(s);
+      setIsNewBest(newBest);
+      setGameState("won");
+    } else {
+      setGameState("lost");
+    }
+  };
+
+  if (!movie) return null;
+
+  const gameOver = gameState !== "playing";
+  const circumference = 2 * Math.PI * 28;
+  const timerProgress = (timer - timeLeft) / timer;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-10 right-10 sm:top-20 sm:right-20 w-64 h-64 sm:w-96 sm:h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
-        <div className="absolute bottom-10 left-10 sm:bottom-20 sm:left-20 w-64 h-64 sm:w-96 sm:h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 right-10 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
+        <div className="absolute bottom-10 left-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-5xl relative z-10"
+        className="w-full max-w-lg relative z-10"
       >
         <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-2xl">
-          <CardHeader className="space-y-3 sm:space-y-4 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
+          <CardHeader className="p-4 sm:p-6 pb-3">
+            <div className="flex items-center justify-between mb-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onBackToMenu}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 shadow-lg shadow-violet-500/40 hover:shadow-violet-500/60 transition-all duration-200 rounded-xl px-4"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 shadow-lg shadow-violet-500/40 transition-all duration-200 rounded-xl px-4"
               >
-                <ArrowLeft className="mr-1 sm:mr-2 size-4" />
+                <ArrowLeft className="mr-2 size-4" />
                 Back
               </Button>
-              <div className="relative size-16 sm:size-20">
-                <svg className="size-full -rotate-90" viewBox="0 0 80 80">
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="34"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="6"
-                    className="text-white/20"
-                  />
+              <div className="relative size-14">
+                <svg className="size-full -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
                   <motion.circle
-                    cx="40"
-                    cy="40"
-                    r="34"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    className="text-blue-400"
-                    initial={{ strokeDasharray: "213.628", strokeDashoffset: 0 }}
-                    animate={{
-                      strokeDashoffset: (213.628 * (10 - timeLeft)) / 10
-                    }}
+                    cx="32" cy="32" r="28"
+                    fill="none" stroke="#60a5fa" strokeWidth="4" strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    animate={{ strokeDashoffset: circumference * timerProgress }}
                     transition={{ duration: 0.5, ease: "linear" }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl sm:text-2xl font-bold text-white">{timeLeft}s</span>
+                  <span className="text-base font-bold text-white">{timeLeft}s</span>
                 </div>
               </div>
             </div>
-            <div>
-              <CardTitle className="text-2xl sm:text-3xl md:text-4xl text-white mb-1 sm:mb-2">Unblur Challenge</CardTitle>
-              <CardDescription className="text-sm sm:text-base text-white/60">
-                Guess the movie as the poster reveals itself
-              </CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-2xl sm:text-3xl text-white">Grid Reveal</CardTitle>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                difficulty === "hard"
+                  ? "bg-red-500/20 text-red-300 border-red-500/30"
+                  : "bg-blue-500/20 text-blue-300 border-blue-500/30"
+              }`}>
+                {difficulty === "hard" ? "Hard" : "Normal"}
+              </span>
             </div>
+            <CardDescription className="text-white/60 mt-1">
+              The poster reveals square by square — pick the right movie!
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-            <div className="h-1.5 sm:h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
-              <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5 }}
-              />
+
+          <CardContent className="p-4 sm:p-6 pt-2 space-y-4">
+
+            {/* Poster with grid overlay */}
+            <div className="flex justify-center">
+              <div
+                className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10"
+                style={{ aspectRatio: "2/3", width: "200px" }}
+              >
+                <ImageWithFallback
+                  src={movie.Poster}
+                  alt="Movie Poster"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                    gridTemplateRows: `repeat(${rows}, 1fr)`,
+                    gap: "1px",
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                  }}
+                >
+                  {Array.from({ length: total }, (_, i) => (
+                    <motion.div
+                      key={i}
+                      className="bg-slate-950"
+                      animate={{ opacity: revealed.includes(i) || gameOver ? 0 : 1 }}
+                      transition={{ duration: 0.3, delay: gameOver ? i * 0.015 : 0 }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <motion.div
-              className="relative aspect-[2/3] max-h-[400px] sm:max-h-[500px] md:max-h-[600px] max-w-[280px] sm:max-w-[360px] md:max-w-[400px] mx-auto bg-black/20 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <ImageWithFallback
-                src={movie.Poster}
-                alt="Movie Poster"
-                className="w-full h-full object-cover"
-                style={{
-                  filter: `blur(${blurAmount}px)`,
-                  transition: "filter 1s ease-out"
-                }}
-              />
-            </motion.div>
-
-            {gameState === "playing" && (
-              <motion.form
-                onSubmit={handleGuess}
-                className="space-y-3 sm:space-y-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Input
-                  type="text"
-                  placeholder="Type your guess..."
-                  value={guess}
-                  onChange={(e) => setGuess(e.target.value)}
-                  className="text-base sm:text-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 backdrop-blur-sm focus:bg-white/20"
-                  autoFocus
-                />
-                <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-base sm:text-lg" size="lg">
-                  Submit Guess
-                </Button>
-              </motion.form>
-            )}
-
-            <AnimatePresence>
-              {gameState === "won" && (
+            {/* Multiple choice / result */}
+            <AnimatePresence mode="wait">
+              {!gameOver ? (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="text-center space-y-3 sm:space-y-4 bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-white/20"
+                  key="options"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="grid grid-cols-2 gap-2"
                 >
-                  <motion.div
-                    className="flex justify-center"
-                    initial={{ rotate: -180, scale: 0 }}
-                    animate={{ rotate: 0, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200 }}
-                  >
-                    <Trophy className="size-16 sm:size-20 text-yellow-400 drop-shadow-lg" />
-                  </motion.div>
-                  <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Brilliant!</h3>
-                    <p className="text-base sm:text-lg text-white/80 px-2">
-                      You guessed <strong className="text-white">{movie.Title}</strong> with {timeLeft} seconds left!
-                    </p>
-                  </div>
-                  <div className="flex gap-2 sm:gap-3">
-                    <Button onClick={onBackToMenu} size="lg" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40 hover:shadow-purple-500/60 transition-all duration-200">
-                      <ArrowLeft className="mr-1 sm:mr-2 size-4" />
-                      Menu
-                    </Button>
-                    <Button onClick={startGame} size="lg" className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
-                      <RotateCcw className="mr-1 sm:mr-2 size-4 sm:size-5" />
-                      <span className="hidden sm:inline">Play Again</span>
-                      <span className="sm:hidden">Again</span>
-                    </Button>
-                  </div>
+                  {options.map(opt => (
+                    <motion.button
+                      key={opt.Title}
+                      whileHover={{ scale: 1.03, y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handlePick(opt)}
+                      className="p-3 text-sm font-medium text-white text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-xl leading-snug transition-colors duration-200"
+                    >
+                      {opt.Title}
+                    </motion.button>
+                  ))}
                 </motion.div>
-              )}
-
-              {gameState === "lost" && (
+              ) : (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="text-center space-y-3 sm:space-y-4 bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-white/20"
+                  key="result"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-3"
                 >
-                  <motion.div
-                    className="flex justify-center"
-                    initial={{ rotate: -180, scale: 0 }}
-                    animate={{ rotate: 0, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200 }}
-                  >
-                    <X className="size-16 sm:size-20 text-red-400 drop-shadow-lg" />
-                  </motion.div>
-                  <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Time's Up!</h3>
-                    <p className="text-base sm:text-lg text-white/80 px-2">
-                      The movie was <strong className="text-white">{movie.Title}</strong> ({movie.Year})
-                    </p>
+                  {/* Highlighted answer options */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {options.map(opt => {
+                      const correct = opt.Title === movie.Title;
+                      const wrong = picked === opt.Title && !correct;
+                      return (
+                        <div
+                          key={opt.Title}
+                          className={`p-3 text-sm font-medium rounded-xl border leading-snug ${
+                            correct
+                              ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
+                              : wrong
+                              ? "bg-red-500/25 border-red-400/50 text-red-300 line-through"
+                              : "bg-white/5 border-white/10 text-white/30"
+                          }`}
+                        >
+                          {opt.Title}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex gap-2 sm:gap-3">
-                    <Button onClick={onBackToMenu} size="lg" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40 hover:shadow-purple-500/60 transition-all duration-200">
-                      <ArrowLeft className="mr-1 sm:mr-2 size-4" />
-                      Menu
+
+                  {/* Result banner */}
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                    className={`text-center py-4 px-3 rounded-xl border ${
+                      gameState === "won"
+                        ? "bg-emerald-500/20 border-emerald-500/30"
+                        : "bg-red-500/20 border-red-500/30"
+                    }`}
+                  >
+                    <div className="flex justify-center mb-2">
+                      {gameState === "won"
+                        ? <Trophy className="size-10 text-yellow-400 drop-shadow-lg" />
+                        : <X className="size-10 text-red-400 drop-shadow-lg" />
+                      }
+                    </div>
+
+                    {gameState === "won" && (
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <span className="text-2xl font-bold text-white">{score} pts</span>
+                        {isNewBest && (
+                          <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                            <Star className="size-3" />
+                            New best!
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-lg font-bold text-white mb-1">
+                      {gameState === "won"
+                        ? "Brilliant!"
+                        : timeLeft === 0
+                        ? "Time's Up!"
+                        : "Wrong Guess!"}
+                    </p>
+                    <p className="text-sm text-white/70">
+                      {gameState === "won"
+                        ? `You nailed it with ${timeLeft}s to spare!`
+                        : `It was ${movie.Title} (${movie.Year})`}
+                    </p>
+                  </motion.div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={onBackToMenu}
+                      size="lg"
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40"
+                    >
+                      <ArrowLeft className="mr-2 size-4" />
+                      Back
                     </Button>
-                    <Button onClick={startGame} size="lg" className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
-                      <RotateCcw className="mr-1 sm:mr-2 size-4 sm:size-5" />
-                      <span className="hidden sm:inline">Try Another</span>
-                      <span className="sm:hidden">Again</span>
+                    <Button
+                      onClick={startGame}
+                      size="lg"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                    >
+                      <RotateCcw className="mr-2 size-4" />
+                      Play Again
                     </Button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+
           </CardContent>
         </Card>
       </motion.div>
