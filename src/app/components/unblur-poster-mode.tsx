@@ -6,7 +6,7 @@ import { ArrowLeft, RotateCcw, Trophy, X, Star } from "lucide-react";
 import { MOVIES, getRandomMovie, type Movie } from "../data/movies";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { calcScore, getHighScore, saveHighScore, type Difficulty } from "./scoring";
+import { calcScore, saveHighScore, type Difficulty } from "./scoring";
 
 interface GridRevealModeProps {
   difficulty: Difficulty;
@@ -20,6 +20,7 @@ const CONFIGS = {
 
 function buildOptions(correct: Movie): Movie[] {
   const pool = MOVIES.filter(m => m.Title !== correct.Title);
+  if (pool.length < 3) throw new Error(`Need at least 4 movies; have ${pool.length + 1}`);
   const wrong = [...pool].sort(() => Math.random() - 0.5).slice(0, 3);
   return [...wrong, correct].sort(() => Math.random() - 0.5);
 }
