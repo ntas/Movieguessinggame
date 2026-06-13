@@ -93,7 +93,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
   const remainingLives = 3 - strikes;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 relative overflow-hidden">
+    <div className="min-h-screen flex items-start sm:items-center justify-center p-3 sm:p-4 md:p-6 pt-4 bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 relative overflow-x-hidden">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-10 left-10 sm:top-20 sm:left-20 w-64 h-64 sm:w-96 sm:h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />

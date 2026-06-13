@@ -94,7 +94,7 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
   const timerProgress = (timer - timeLeft) / timer;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+    <div className="min-h-screen flex items-start sm:items-center justify-center p-3 sm:p-4 pt-4 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-x-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 right-10 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
         <div className="absolute bottom-10 left-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
@@ -104,11 +104,11 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-lg relative z-10"
+        className="w-full max-w-sm sm:max-w-lg md:max-w-2xl relative z-10"
       >
         <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-2xl">
-          <CardHeader className="p-4 sm:p-6 pb-3">
-            <div className="flex items-center justify-between mb-3">
+          <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
+            <div className="flex items-center justify-between mb-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -135,8 +135,8 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <CardTitle className="text-2xl sm:text-3xl text-white">Grid Reveal</CardTitle>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl text-white">Grid Reveal</CardTitle>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                 difficulty === "hard"
                   ? "bg-red-500/20 text-red-300 border-red-500/30"
                   : "bg-blue-500/20 text-blue-300 border-blue-500/30"
@@ -144,165 +144,167 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
                 {difficulty === "hard" ? "Hard" : "Normal"}
               </span>
             </div>
-            <CardDescription className="text-white/60 mt-1">
+            <CardDescription className="text-white/60 mt-0.5 hidden sm:block">
               The poster reveals square by square — pick the right movie!
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-4 sm:p-6 pt-2 space-y-4">
+          <CardContent className="p-3 sm:p-5 md:p-6 pt-2 sm:pt-3">
+            {/* On md+ screens: poster left, controls right. On mobile: stacked. */}
+            <div className="flex flex-col md:flex-row md:gap-6 md:items-start gap-3">
 
-            {/* Poster with grid overlay */}
-            <div className="flex justify-center">
-              <div
-                className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10"
-                style={{ aspectRatio: "2/3", width: "200px" }}
-              >
-                <ImageWithFallback
-                  src={movie.Poster}
-                  alt="Movie Poster"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                    gridTemplateRows: `repeat(${rows}, 1fr)`,
-                    gap: "1px",
-                    backgroundColor: "rgba(0,0,0,0.25)",
-                  }}
-                >
-                  {Array.from({ length: total }, (_, i) => (
-                    <motion.div
-                      key={i}
-                      className="bg-slate-950"
-                      animate={{ opacity: revealed.includes(i) || gameOver ? 0 : 1 }}
-                      transition={{ duration: 0.3, delay: gameOver ? i * 0.015 : 0 }}
-                    />
-                  ))}
+              {/* Poster */}
+              <div className="flex justify-center md:justify-start md:shrink-0">
+                <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 aspect-[2/3] w-36 sm:w-44 md:w-52 lg:w-60">
+                  <ImageWithFallback
+                    src={movie.Poster}
+                    alt="Movie Poster"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                      gridTemplateRows: `repeat(${rows}, 1fr)`,
+                      gap: "1px",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    {Array.from({ length: total }, (_, i) => (
+                      <motion.div
+                        key={i}
+                        className="bg-slate-950"
+                        animate={{ opacity: revealed.includes(i) || gameOver ? 0 : 1 }}
+                        transition={{ duration: 0.3, delay: gameOver ? i * 0.015 : 0 }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Multiple choice / result */}
-            <AnimatePresence mode="wait">
-              {!gameOver ? (
-                <motion.div
-                  key="options"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                  className="grid grid-cols-2 gap-2"
-                >
-                  {options.map(opt => (
-                    <motion.button
-                      key={opt.Title}
-                      whileHover={{ scale: 1.03, y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handlePick(opt)}
-                      className="p-3 text-sm font-medium text-white text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-xl leading-snug transition-colors duration-200"
+              {/* Multiple choice / result */}
+              <div className="flex-1 min-w-0">
+                <AnimatePresence mode="wait">
+                  {!gameOver ? (
+                    <motion.div
+                      key="options"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                      className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-3"
                     >
-                      {opt.Title}
-                    </motion.button>
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="result"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-3"
-                >
-                  {/* Highlighted answer options */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {options.map(opt => {
-                      const correct = opt.Title === movie.Title;
-                      const wrong = picked === opt.Title && !correct;
-                      return (
-                        <div
+                      {options.map(opt => (
+                        <motion.button
                           key={opt.Title}
-                          className={`p-3 text-sm font-medium rounded-xl border leading-snug ${
-                            correct
-                              ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
-                              : wrong
-                              ? "bg-red-500/25 border-red-400/50 text-red-300 line-through"
-                              : "bg-white/5 border-white/10 text-white/30"
-                          }`}
+                          whileHover={{ scale: 1.03, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => handlePick(opt)}
+                          className="p-2.5 sm:p-3 text-xs sm:text-sm font-medium text-white text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-xl leading-snug transition-colors duration-200"
                         >
                           {opt.Title}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Result banner */}
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
-                    className={`text-center py-4 px-3 rounded-xl border ${
-                      gameState === "won"
-                        ? "bg-emerald-500/20 border-emerald-500/30"
-                        : "bg-red-500/20 border-red-500/30"
-                    }`}
-                  >
-                    <div className="flex justify-center mb-2">
-                      {gameState === "won"
-                        ? <Trophy className="size-10 text-yellow-400 drop-shadow-lg" />
-                        : <X className="size-10 text-red-400 drop-shadow-lg" />
-                      }
-                    </div>
-
-                    {gameState === "won" && (
-                      <div className="flex items-center justify-center gap-2 mb-1">
-                        <span className="text-2xl font-bold text-white">{score} pts</span>
-                        {isNewBest && (
-                          <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                            <Star className="size-3" />
-                            New best!
-                          </span>
-                        )}
+                        </motion.button>
+                      ))}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="result"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-2 sm:space-y-3"
+                    >
+                      {/* Highlighted answer options */}
+                      <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                        {options.map(opt => {
+                          const correct = opt.Title === movie.Title;
+                          const wrong = picked === opt.Title && !correct;
+                          return (
+                            <div
+                              key={opt.Title}
+                              className={`p-2.5 sm:p-3 text-xs sm:text-sm font-medium rounded-xl border leading-snug ${
+                                correct
+                                  ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
+                                  : wrong
+                                  ? "bg-red-500/25 border-red-400/50 text-red-300 line-through"
+                                  : "bg-white/5 border-white/10 text-white/30"
+                              }`}
+                            >
+                              {opt.Title}
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
 
-                    <p className="text-lg font-bold text-white mb-1">
-                      {gameState === "won"
-                        ? "Brilliant!"
-                        : timeLeft === 0
-                        ? "Time's Up!"
-                        : "Wrong Guess!"}
-                    </p>
-                    <p className="text-sm text-white/70">
-                      {gameState === "won"
-                        ? `You nailed it with ${timeLeft}s to spare!`
-                        : `It was ${movie.Title} (${movie.Year})`}
-                    </p>
-                  </motion.div>
+                      {/* Result banner */}
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                        className={`text-center py-3 sm:py-4 px-3 rounded-xl border ${
+                          gameState === "won"
+                            ? "bg-emerald-500/20 border-emerald-500/30"
+                            : "bg-red-500/20 border-red-500/30"
+                        }`}
+                      >
+                        <div className="flex justify-center mb-1.5">
+                          {gameState === "won"
+                            ? <Trophy className="size-8 sm:size-10 text-yellow-400 drop-shadow-lg" />
+                            : <X className="size-8 sm:size-10 text-red-400 drop-shadow-lg" />
+                          }
+                        </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={onBackToMenu}
-                      size="lg"
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40"
-                    >
-                      <ArrowLeft className="mr-2 size-4" />
-                      Back
-                    </Button>
-                    <Button
-                      onClick={startGame}
-                      size="lg"
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-                    >
-                      <RotateCcw className="mr-2 size-4" />
-                      Play Again
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                        {gameState === "won" && (
+                          <div className="flex items-center justify-center gap-2 mb-1">
+                            <span className="text-xl sm:text-2xl font-bold text-white">{score} pts</span>
+                            {isNewBest && (
+                              <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                <Star className="size-3" />
+                                New best!
+                              </span>
+                            )}
+                          </div>
+                        )}
 
+                        <p className="text-base sm:text-lg font-bold text-white mb-0.5">
+                          {gameState === "won"
+                            ? "Brilliant!"
+                            : timeLeft === 0
+                            ? "Time's Up!"
+                            : "Wrong Guess!"}
+                        </p>
+                        <p className="text-xs sm:text-sm text-white/70">
+                          {gameState === "won"
+                            ? `You nailed it with ${timeLeft}s to spare!`
+                            : `It was ${movie.Title} (${movie.Year})`}
+                        </p>
+                      </motion.div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={onBackToMenu}
+                          size="lg"
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40"
+                        >
+                          <ArrowLeft className="mr-2 size-4" />
+                          Back
+                        </Button>
+                        <Button
+                          onClick={startGame}
+                          size="lg"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                        >
+                          <RotateCcw className="mr-2 size-4" />
+                          Play Again
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+            </div>
           </CardContent>
         </Card>
       </motion.div>

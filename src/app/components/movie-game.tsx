@@ -26,7 +26,7 @@ export function MovieGame() {
     const normalBest = getHighScore("normal");
     const hardBest = getHighScore("hard");
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-x-hidden">
+      <div className="min-h-screen w-full flex items-start sm:items-center justify-center p-4 sm:p-6 md:p-8 pt-6 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-x-hidden">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-60 h-60 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
           <div className="absolute -bottom-40 -left-40 w-60 h-60 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
@@ -111,7 +111,7 @@ export function MovieGame() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-x-hidden">
+    <div className="min-h-screen w-full flex items-start sm:items-center justify-center p-4 sm:p-6 md:p-8 pt-6 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-x-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-60 h-60 md:w-80 md:h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
         <div className="absolute -bottom-40 -left-40 w-60 h-60 md:w-80 md:h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
