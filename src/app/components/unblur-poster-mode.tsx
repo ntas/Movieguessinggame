@@ -155,7 +155,7 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
 
               {/* Poster */}
               <div className="flex justify-center md:justify-start md:shrink-0">
-                <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 aspect-[2/3] w-36 sm:w-44 md:w-52 lg:w-60">
+                <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 aspect-[2/3] w-56 sm:w-64 md:w-72 lg:w-80">
                   <ImageWithFallback
                     src={movie.Poster}
                     alt="Movie Poster"
