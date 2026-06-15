@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
 import { ArrowLeft, RotateCcw, Trophy, X } from "lucide-react";
-import { getRandomMovie, type Movie } from "../data/movies";
+import { MOVIES, getRandomMovie, type Movie } from "../data/movies";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+
+function buildOptions(correct: Movie): Movie[] {
+  const pool = MOVIES.filter(m => m.Title !== correct.Title);
+  const wrong = [...pool].sort(() => Math.random() - 0.5).slice(0, 3);
+  return [...wrong, correct].sort(() => Math.random() - 0.5);
+}
 
 interface RedactedPlotModeProps {
   onBackToMenu: () => void;
@@ -14,18 +18,11 @@ interface RedactedPlotModeProps {
 
 export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [options, setOptions] = useState<Movie[]>([]);
   const [redactedPlot, setRedactedPlot] = useState("");
-  const [guess, setGuess] = useState("");
   const [strikes, setStrikes] = useState(0);
   const [gameState, setGameState] = useState<"playing" | "won" | "lost">("playing");
-  const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
-
-  const normalizeString = (str: string) => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .trim();
-  };
+  const [wrongPicks, setWrongPicks] = useState<string[]>([]);
 
   const redactPlot = (plot: string, actors: string): string => {
     let redacted = plot;
@@ -54,31 +51,22 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
   const startGame = () => {
     const newMovie = getRandomMovie();
     setMovie(newMovie);
+    setOptions(buildOptions(newMovie));
     setRedactedPlot(redactPlot(newMovie.Plot, newMovie.Actors));
-    setGuess("");
     setStrikes(0);
     setGameState("playing");
-    setWrongGuesses([]);
+    setWrongPicks([]);
   };
 
-  const handleGuess = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!movie || gameState !== "playing" || !guess.trim()) return;
-
-    const normalizedGuess = normalizeString(guess);
-    const normalizedTitle = normalizeString(movie.Title);
-
-    if (normalizedGuess === normalizedTitle) {
+  const handlePick = (choice: Movie) => {
+    if (!movie || gameState !== "playing") return;
+    if (choice.Title === movie.Title) {
       setGameState("won");
     } else {
       const newStrikes = strikes + 1;
       setStrikes(newStrikes);
-      setWrongGuesses([...wrongGuesses, guess]);
-      setGuess("");
-
-      if (newStrikes >= 3) {
-        setGameState("lost");
-      }
+      setWrongPicks(prev => [...prev, choice.Title]);
+      if (newStrikes >= 3) setGameState("lost");
     }
   };
 
@@ -156,175 +144,129 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
               <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/90">{redactedPlot}</p>
             </motion.div>
 
-          {wrongGuesses.length > 0 && (
-            <motion.div
-              className="space-y-2 sm:space-y-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <p className="text-xs sm:text-sm font-medium text-white/60">Previous Guesses:</p>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                {wrongGuesses.map((wrongGuess, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-xs sm:text-sm">
-                      {wrongGuess}
-                    </Badge>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
           {gameState === "playing" && (
-            <motion.form
-              onSubmit={handleGuess}
-              className="space-y-3 sm:space-y-4"
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Input
-                type="text"
-                placeholder="Type the movie title..."
-                value={guess}
-                onChange={(e) => setGuess(e.target.value)}
-                className="text-base sm:text-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 backdrop-blur-sm focus:bg-white/20"
-                autoFocus
-              />
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-base sm:text-lg"
-                size="lg"
-                disabled={!guess.trim()}
-              >
-                Submit Guess
-              </Button>
-            </motion.form>
+              {options.map(opt => {
+                const isWrong = wrongPicks.includes(opt.Title);
+                return (
+                  <motion.button
+                    key={opt.Title}
+                    whileHover={isWrong ? {} : { scale: 1.02, y: -2 }}
+                    whileTap={isWrong ? {} : { scale: 0.97 }}
+                    onClick={() => handlePick(opt)}
+                    disabled={isWrong}
+                    className={`p-3 sm:p-4 text-sm sm:text-base font-medium text-left rounded-xl border leading-snug transition-colors duration-200 ${
+                      isWrong
+                        ? "bg-red-500/15 border-red-400/30 text-red-300/50 line-through cursor-not-allowed"
+                        : "bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/40 text-white cursor-pointer"
+                    }`}
+                  >
+                    {opt.Title}
+                  </motion.button>
+                );
+              })}
+            </motion.div>
           )}
 
           <AnimatePresence>
-            {gameState === "won" && (
+            {(gameState === "won" || gameState === "lost") && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="text-center space-y-4 sm:space-y-6 bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-white/20"
+                className="space-y-4 sm:space-y-5"
               >
-                <motion.div
-                  className="flex justify-center"
-                  initial={{ rotate: -180, scale: 0 }}
-                  animate={{ rotate: 0, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                >
-                  <Trophy className="size-16 sm:size-20 text-yellow-400 drop-shadow-lg" />
-                </motion.div>
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Brilliant!</h3>
-                  <p className="text-base sm:text-lg text-white/80 px-2">
-                    You guessed <strong className="text-white">{movie.Title}</strong> with {remainingLives} {remainingLives === 1 ? 'life' : 'lives'} left!
-                  </p>
+                {/* Highlighted options */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  {options.map(opt => {
+                    const correct = opt.Title === movie.Title;
+                    const wrong = wrongPicks.includes(opt.Title);
+                    return (
+                      <div
+                        key={opt.Title}
+                        className={`p-3 sm:p-4 text-sm sm:text-base font-medium rounded-xl border leading-snug ${
+                          correct
+                            ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
+                            : wrong
+                            ? "bg-red-500/20 border-red-400/40 text-red-300/60 line-through"
+                            : "bg-white/5 border-white/10 text-white/30"
+                        }`}
+                      >
+                        {opt.Title}
+                      </div>
+                    );
+                  })}
                 </div>
 
+                {/* Result banner */}
                 <motion.div
-                  className="relative aspect-[2/3] max-h-[320px] sm:max-h-[400px] max-w-[240px] sm:max-w-[300px] mx-auto rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                  className={`text-center space-y-4 sm:space-y-5 backdrop-blur-md rounded-xl sm:rounded-2xl p-5 sm:p-6 border ${
+                    gameState === "won"
+                      ? "bg-emerald-500/10 border-emerald-500/30"
+                      : "bg-red-500/10 border-red-500/30"
+                  }`}
                 >
-                  <ImageWithFallback
-                    src={movie.Poster}
-                    alt={movie.Title}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="flex justify-center">
+                    {gameState === "won"
+                      ? <Trophy className="size-14 sm:size-16 text-yellow-400 drop-shadow-lg" />
+                      : <X className="size-14 sm:size-16 text-red-400 drop-shadow-lg" />
+                    }
+                  </div>
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                      {gameState === "won" ? "Brilliant!" : "Game Over!"}
+                    </h3>
+                    <p className="text-sm sm:text-base text-white/70">
+                      {gameState === "won"
+                        ? `You got it with ${remainingLives} ${remainingLives === 1 ? "life" : "lives"} left!`
+                        : `The movie was ${movie.Title} (${movie.Year})`
+                      }
+                    </p>
+                  </div>
+
+                  <motion.div
+                    className="relative aspect-[2/3] max-h-[280px] sm:max-h-[340px] max-w-[200px] sm:max-w-[240px] mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <ImageWithFallback
+                      src={movie.Poster}
+                      alt={movie.Title}
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.div>
+
+                  <div className="p-4 bg-white/5 rounded-xl text-left space-y-3 border border-white/10">
+                    <div>
+                      <p className="text-xs font-medium text-white/50 mb-1">Starring:</p>
+                      <p className="text-xs sm:text-sm text-white/80">{movie.Actors}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-white/50 mb-1">Full Plot:</p>
+                      <p className="text-xs sm:text-sm leading-relaxed text-white/70">{movie.Plot}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 sm:gap-3">
+                    <Button onClick={onBackToMenu} size="lg" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40">
+                      <ArrowLeft className="mr-1 sm:mr-2 size-4" />
+                      Menu
+                    </Button>
+                    <Button onClick={startGame} size="lg" className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
+                      <RotateCcw className="mr-1 sm:mr-2 size-4" />
+                      {gameState === "won" ? "Play Again" : "Try Again"}
+                    </Button>
+                  </div>
                 </motion.div>
-
-                <div className="p-4 sm:p-6 bg-white/5 rounded-xl sm:rounded-2xl text-left space-y-3 sm:space-y-4 border border-white/10">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-white/60 mb-1 sm:mb-2">Starring:</p>
-                    <p className="text-xs sm:text-sm text-white/90">{movie.Actors}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-white/60 mb-1 sm:mb-2">Full Plot:</p>
-                    <p className="text-xs sm:text-sm leading-relaxed text-white/80">{movie.Plot}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 sm:gap-3">
-                  <Button onClick={onBackToMenu} size="lg" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40 hover:shadow-purple-500/60 transition-all duration-200">
-                    <ArrowLeft className="mr-1 sm:mr-2 size-4" />
-                    Menu
-                  </Button>
-                  <Button onClick={startGame} size="lg" className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
-                    <RotateCcw className="mr-1 sm:mr-2 size-4 sm:size-5" />
-                    <span className="hidden sm:inline">Play Again</span>
-                    <span className="sm:hidden">Again</span>
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-
-            {gameState === "lost" && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="text-center space-y-4 sm:space-y-6 bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-white/20"
-              >
-                <motion.div
-                  className="flex justify-center"
-                  initial={{ rotate: -180, scale: 0 }}
-                  animate={{ rotate: 0, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                >
-                  <X className="size-16 sm:size-20 text-red-400 drop-shadow-lg" />
-                </motion.div>
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Game Over!</h3>
-                  <p className="text-base sm:text-lg text-white/80 px-2">
-                    The movie was <strong className="text-white">{movie.Title}</strong> ({movie.Year})
-                  </p>
-                </div>
-
-                <motion.div
-                  className="relative aspect-[2/3] max-h-[320px] sm:max-h-[400px] max-w-[240px] sm:max-w-[300px] mx-auto rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20"
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <ImageWithFallback
-                    src={movie.Poster}
-                    alt={movie.Title}
-                    className="w-full h-full object-cover"
-                  />
-                </motion.div>
-
-                <div className="p-4 sm:p-6 bg-white/5 rounded-xl sm:rounded-2xl text-left space-y-3 sm:space-y-4 border border-white/10">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-white/60 mb-1 sm:mb-2">Starring:</p>
-                    <p className="text-xs sm:text-sm text-white/90">{movie.Actors}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-white/60 mb-1 sm:mb-2">Full Plot:</p>
-                    <p className="text-xs sm:text-sm leading-relaxed text-white/80">{movie.Plot}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 sm:gap-3">
-                  <Button onClick={onBackToMenu} size="lg" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-lg shadow-purple-500/40 hover:shadow-purple-500/60 transition-all duration-200">
-                    <ArrowLeft className="mr-1 sm:mr-2 size-4" />
-                    Menu
-                  </Button>
-                  <Button onClick={startGame} size="lg" className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
-                    <RotateCcw className="mr-1 sm:mr-2 size-4 sm:size-5" />
-                    <span className="hidden sm:inline">Try Another</span>
-                    <span className="sm:hidden">Again</span>
-                  </Button>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
