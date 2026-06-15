@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
 import { ArrowLeft, RotateCcw, Trophy, X } from "lucide-react";
 import { MOVIES, getRandomMovie, type Movie } from "../data/movies";
 import { motion, AnimatePresence } from "motion/react";
