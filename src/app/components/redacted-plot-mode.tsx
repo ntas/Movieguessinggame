@@ -234,7 +234,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
                   </div>
 
                   <motion.div
-                    className="relative aspect-[2/3] max-h-[280px] sm:max-h-[340px] max-w-[200px] sm:max-w-[240px] mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20"
+                    className="relative aspect-[2/3] w-56 sm:w-64 md:w-72 lg:w-80 mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.3 }}
