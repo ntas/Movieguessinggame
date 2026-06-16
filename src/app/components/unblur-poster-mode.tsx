@@ -195,14 +195,15 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
                       transition={{ duration: 0.2 }}
                       className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-3"
                     >
-                      {options.map(opt => (
+                      {options.map((opt, i) => (
                         <motion.button
                           key={opt.Title}
                           whileHover={{ scale: 1.03, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() => handlePick(opt)}
-                          className="p-2.5 sm:p-3 text-xs sm:text-sm font-medium text-white text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-xl leading-snug transition-colors duration-200"
+                          className="p-2.5 sm:p-3 text-xs sm:text-sm font-medium text-white text-left bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-xl leading-snug transition-colors duration-200 flex items-start gap-2"
                         >
+                          <span className="shrink-0 font-bold text-white/40">{["A","B","C","D"][i]}.</span>
                           {opt.Title}
                         </motion.button>
                       ))}
@@ -217,13 +218,13 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
                     >
                       {/* Highlighted answer options */}
                       <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
-                        {options.map(opt => {
+                        {options.map((opt, i) => {
                           const correct = opt.Title === movie.Title;
                           const wrong = picked === opt.Title && !correct;
                           return (
                             <div
                               key={opt.Title}
-                              className={`p-2.5 sm:p-3 text-xs sm:text-sm font-medium rounded-xl border leading-snug ${
+                              className={`p-2.5 sm:p-3 text-xs sm:text-sm font-medium rounded-xl border leading-snug flex items-start gap-2 ${
                                 correct
                                   ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
                                   : wrong
@@ -231,6 +232,7 @@ export function GridRevealMode({ difficulty, onBackToMenu }: GridRevealModeProps
                                   : "bg-white/5 border-white/10 text-white/30"
                               }`}
                             >
+                              <span className="shrink-0 font-bold opacity-60">{["A","B","C","D"][i]}.</span>
                               {opt.Title}
                             </div>
                           );

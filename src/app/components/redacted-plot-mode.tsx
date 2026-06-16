@@ -154,7 +154,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              {options.map(opt => {
+              {options.map((opt, i) => {
                 const isWrong = wrongPicks.includes(opt.Title);
                 return (
                   <motion.button
@@ -163,12 +163,13 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
                     whileTap={isWrong ? {} : { scale: 0.97 }}
                     onClick={() => handlePick(opt)}
                     disabled={isWrong}
-                    className={`p-3 sm:p-4 text-sm sm:text-base font-medium text-left rounded-xl border leading-snug transition-colors duration-200 ${
+                    className={`p-3 sm:p-4 text-sm sm:text-base font-medium text-left rounded-xl border leading-snug transition-colors duration-200 flex items-start gap-2 ${
                       isWrong
                         ? "bg-red-500/15 border-red-400/30 text-red-300/50 line-through cursor-not-allowed"
                         : "bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/40 text-white cursor-pointer"
                     }`}
                   >
+                    <span className="shrink-0 font-bold text-white/40">{["A","B","C","D"][i]}.</span>
                     {opt.Title}
                   </motion.button>
                 );
@@ -186,13 +187,13 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
               >
                 {/* Highlighted options */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {options.map(opt => {
+                  {options.map((opt, i) => {
                     const correct = opt.Title === movie.Title;
                     const wrong = wrongPicks.includes(opt.Title);
                     return (
                       <div
                         key={opt.Title}
-                        className={`p-3 sm:p-4 text-sm sm:text-base font-medium rounded-xl border leading-snug ${
+                        className={`p-3 sm:p-4 text-sm sm:text-base font-medium rounded-xl border leading-snug flex items-start gap-2 ${
                           correct
                             ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
                             : wrong
@@ -200,6 +201,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
                             : "bg-white/5 border-white/10 text-white/30"
                         }`}
                       >
+                        <span className="shrink-0 font-bold opacity-60">{["A","B","C","D"][i]}.</span>
                         {opt.Title}
                       </div>
                     );
