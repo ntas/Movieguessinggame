@@ -132,6 +132,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+          {gameState === "playing" && (
             <motion.div
               className="bg-white/5 backdrop-blur-md p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10"
               initial={{ opacity: 0, y: 20 }}
@@ -144,6 +145,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
               </div>
               <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/90">{redactedPlot}</p>
             </motion.div>
+          )}
 
           {gameState === "playing" && (
             <motion.div
