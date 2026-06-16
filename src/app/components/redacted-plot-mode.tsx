@@ -32,7 +32,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
     // Redact full title
     redacted = redacted.replace(new RegExp(esc(title), "gi"), "█████");
 
-    // Redact individual title words (skip short stop words)
+    // Redact individual title words and any character names matching them (skip stop words)
     const STOP = new Set(["a","an","the","of","in","on","at","to","for","and","or","but","is","it","as","are","was","with","from"]);
     title.split(/[\s:,\-–]+/).forEach(word => {
       const clean = word.replace(/[^a-zA-Z0-9]/g, "");
@@ -41,11 +41,17 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
       }
     });
 
-    // Redact abbreviations (e.g. E.T., U.S.A.)
-    redacted = redacted.replace(/\b([A-Z]\.){2,}/g, "█████");
+    // Redact abbreviations already present in the title (e.g. E.T., U.S.A.)
+    (title.match(/([A-Z]\.){2,}/g) ?? []).forEach(abbrev => {
+      redacted = redacted.replace(new RegExp(esc(abbrev), "g"), "█████");
+    });
 
-    // Redact all standalone numbers
-    redacted = redacted.replace(/\b\d+\b/g, "█████");
+    // Redact dotted-initial form of title significant words (e.g. "Indiana Jones" → "I.J." in plot)
+    const sigWords = title.split(/[\s:,\-–]+/).filter(w => !STOP.has(w.toLowerCase()) && /^[A-Za-z]/.test(w));
+    if (sigWords.length >= 2) {
+      const dotted = sigWords.map(w => w[0].toUpperCase()).join(".") + ".";
+      redacted = redacted.replace(new RegExp(esc(dotted), "g"), "█████");
+    }
 
     // Redact actor names (each part longer than 2 chars)
     actors.split(",").forEach(actor => {
