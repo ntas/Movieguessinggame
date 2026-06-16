@@ -25,27 +25,40 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
   const [gameState, setGameState] = useState<"playing" | "won" | "lost">("playing");
   const [wrongPicks, setWrongPicks] = useState<string[]>([]);
 
-  const redactPlot = (plot: string, actors: string): string => {
+  const redactPlot = (plot: string, title: string, actors: string): string => {
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     let redacted = plot;
-    
-    // Split actors by comma and get individual names
-    const actorNames = actors.split(",").map(name => name.trim());
-    
-    // For each actor, extract first and last names
-    actorNames.forEach(actor => {
-      const nameParts = actor.split(" ");
-      nameParts.forEach(part => {
-        if (part.length > 2) { // Only redact names longer than 2 characters
-          // Create a case-insensitive regex to find the name
-          const regex = new RegExp(`\\b${part}\\b`, "gi");
-          redacted = redacted.replace(regex, "█████");
+
+    // Redact full title
+    redacted = redacted.replace(new RegExp(esc(title), "gi"), "█████");
+
+    // Redact individual title words (skip short stop words)
+    const STOP = new Set(["a","an","the","of","in","on","at","to","for","and","or","but","is","it","as","are","was","with","from"]);
+    title.split(/[\s:,\-–]+/).forEach(word => {
+      const clean = word.replace(/[^a-zA-Z0-9]/g, "");
+      if (clean.length > 1 && !STOP.has(clean.toLowerCase())) {
+        redacted = redacted.replace(new RegExp(`\\b${esc(clean)}\\b`, "gi"), "█████");
+      }
+    });
+
+    // Redact abbreviations (e.g. E.T., U.S.A.)
+    redacted = redacted.replace(/\b([A-Z]\.){2,}/g, "█████");
+
+    // Redact all standalone numbers
+    redacted = redacted.replace(/\b\d+\b/g, "█████");
+
+    // Redact actor names (each part longer than 2 chars)
+    actors.split(",").forEach(actor => {
+      actor.trim().split(" ").forEach(part => {
+        if (part.length > 2) {
+          redacted = redacted.replace(new RegExp(`\\b${esc(part)}\\b`, "gi"), "█████");
         }
       });
     });
 
-    // Also redact common character patterns like "Mr./Mrs./Dr. [Name]"
+    // Redact names after honorifics
     redacted = redacted.replace(/\b(Mr\.|Mrs\.|Ms\.|Dr\.|Professor)\s+[A-Z][a-z]+/g, "$1 █████");
-    
+
     return redacted;
   };
 
@@ -53,7 +66,7 @@ export function RedactedPlotMode({ onBackToMenu }: RedactedPlotModeProps) {
     const newMovie = getRandomMovie();
     setMovie(newMovie);
     setOptions(buildOptions(newMovie));
-    setRedactedPlot(redactPlot(newMovie.Plot, newMovie.Actors));
+    setRedactedPlot(redactPlot(newMovie.Plot, newMovie.Title, newMovie.Actors));
     setStrikes(0);
     setGameState("playing");
     setWrongPicks([]);
